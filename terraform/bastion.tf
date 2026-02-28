@@ -5,6 +5,8 @@ resource "aws_instance" "bastion" {
   vpc_security_group_ids      = [aws_security_group.bastion.id]
   associate_public_ip_address = true
 
+  key_name = "linux-key"   # ← ADD THIS
+
   tags = {
     Name        = "${var.project_name}-bastion"
     Tier        = "management"

@@ -1,10 +1,9 @@
-############################
-# FRONTEND LAUNCH TEMPLATE
-############################
 resource "aws_launch_template" "frontend" {
   name_prefix   = "${var.project_name}-frontend-"
   image_id      = data.aws_ami.amazon_linux.id
   instance_type = var.frontend_instance_type
+
+  key_name = "linux-key"   # ← ADDED
 
   vpc_security_group_ids = [aws_security_group.compute.id]
 
@@ -12,11 +11,19 @@ resource "aws_launch_template" "frontend" {
     name = aws_iam_instance_profile.ec2_profile.name
   }
 
-  user_data = base64encode("#!/bin/bash\nyum install -y httpd\nsystemctl start httpd\n")
+  user_data = base64encode(<<-EOF
+#!/bin/bash
+set -e
+exec > /var/log/user-data.log 2>&1
+yum update -y
+amazon-linux-extras enable ansible2
+yum install -y ansible git
+ansible-pull -U https://github.com/aayudhanve2002-source/front-ansible.git -i localhost, playbook.yml
+EOF
+  )
 
   tag_specifications {
     resource_type = "instance"
-
     tags = {
       Name        = "${var.project_name}-frontend-instance"
       Tier        = "frontend"
@@ -75,15 +82,27 @@ resource "aws_launch_template" "backend" {
   image_id      = data.aws_ami.amazon_linux.id
   instance_type = var.backend_instance_type
 
+  key_name = "linux-key"   # ← ADDED
+
   vpc_security_group_ids = [aws_security_group.compute.id]
 
   iam_instance_profile {
     name = aws_iam_instance_profile.ec2_profile.name
   }
 
+  user_data = base64encode(<<-EOF
+#!/bin/bash
+set -e
+exec > /var/log/user-data.log 2>&1
+yum update -y
+amazon-linux-extras enable ansible2
+yum install -y ansible git
+ansible-pull -U https://github.com/aayudhanve2002-source/back-ansible.git -i localhost, playbook.yml
+EOF
+  )
+
   tag_specifications {
     resource_type = "instance"
-
     tags = {
       Name        = "${var.project_name}-backend-instance"
       Tier        = "backend"
@@ -97,7 +116,6 @@ resource "aws_launch_template" "backend" {
     Environment = "dev"
   }
 }
-
 ############################
 # BACKEND AUTO SCALING GROUP
 ############################

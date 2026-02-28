@@ -1,0 +1,51 @@
+- name: Setup Backend Server (Amazon Linux)
+  hosts: backend
+  become: yes
+
+  vars:
+    app_dir: /opt/backend
+    app_port: 3000
+
+  tasks:
+    - name: Install Node.js
+      yum:
+        name: nodejs
+        state: present
+
+    - name: Create backend directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+
+    - name: Copy backend application
+      copy:
+        src: app/
+        dest: "{{ app_dir }}"
+
+    - name: Install npm dependencies
+      command: npm install
+      args:
+        chdir: "{{ app_dir }}"
+
+    - name: Create systemd service for backend
+      copy:
+        dest: /etc/systemd/system/backend.service
+        content: |
+          [Unit]
+          Description=Backend Application
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/bin/node {{ app_dir }}/server.js
+          Restart=always
+          User=root
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Enable and start backend service
+      systemd:
+        name: backend
+        state: started
+        enabled: yes
+        daemon_reload: yes
